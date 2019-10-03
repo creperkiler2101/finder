@@ -89,17 +89,16 @@ class Github {
         xmlRequest.send();
     }
 
-    getUsers(query, callback) {
-        this.getJSON(`${this.url}search/users?q=${query}&client_id=${this.clientId}&client_secret=${this.secretId}&per_page=${this.maxUsers}`, function(status, data) {
-            if (status === 200) {
-                let result = [];
-                data.items.forEach(function(value) {
-                    let user = new GithubUser(value);
-                    result.push(user);
-                });
-                callback(status, result);
-            }
+    async getUsers(query) {
+        let searchResponse = await fetch(`${this.url}search/users?q=${query}&client_id=${this.clientId}&client_secret=${this.secretId}&per_page=${this.maxUsers}`);
+        let searchResult = await searchResponse.json();
+        let result = [];
+        searchResult.items.forEach(async function(value) {
+            let userResponse = await fetch(`https://api.github.com/users/${value.login}?client_id=8d42f4dc753eb6f1b180&client_secret=98222f8d8d60ffe189cb34cb65ad3025f1618b3d`);
+            let user = await userResponse.json();
+            result.push(new GithubUser(user));
         });
+        return result;
     }
 
     getRepositories(user, callback) {
@@ -124,27 +123,16 @@ class Github {
 
 const github = new Github("https://api.github.com/", "8d42f4dc753eb6f1b180", "98222f8d8d60ffe189cb34cb65ad3025f1618b3d", 10, 5);
 
-function search() {
-    github.getUsers(searchElement.value, function(status, result) {
-        if (status === 200) {
-            let htmlString = "";
-            result.forEach(function(value) {
-                htmlString += "<div>";
-                htmlString += value.toHTML();
-                htmlString += "<hr>";
-                github.getRepositories(value, function(status, result) {
-                    result.forEach(function(value) {
-                        htmlString += value.toHTML();
-                        //console.log(value.toHTML());
-                    });
-                });
-                htmlString += "</div>";
-            });
-            //console.log(htmlString);
-            resultElement.innerHTML = htmlString;
-        } else {
-            resultElement.innerHTML = "Nothing founded";
-        }
+async function search() {
+    let users = await github.getUsers(searchElement.value);
+    let htmlString = "";
+    console.log(users.length);
+    users.forEach(function(value) {
+        htmlString += "<div>";
+        htmlString += value.toHTML();
+        htmlString += "<hr>";
+        htmlString += "</div>";
     });
+    resultElement.innerHTML = htmlString;
 }
 
